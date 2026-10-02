@@ -201,10 +201,12 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import progressbar as pgb
+import rasterio
 import xarray as xr
 from _helpers import BASE_DIR, configure_logging, create_logger
 from add_electricity import load_powerplants
 from dask.distributed import Client
+from pyproj import CRS
 from pypsa.geo import haversine
 from shapely.geometry import LineString, Point, box
 
@@ -648,41 +650,74 @@ if __name__ == "__main__":
 
         excluder = atlite.ExclusionContainer(crs=area_crs, res=100)
 
-        if "natura" in config and config["natura"]:
-            excluder.add_raster(paths.natura, nodata=0, allow_no_overlap=True)
-
-        if "copernicus" in config and config["copernicus"]:
-            copernicus = config["copernicus"]
-            excluder.add_raster(
-                paths.copernicus,
-                codes=copernicus["grid_codes"],
-                invert=True,
-                crs=COPERNICUS_CRS,
+        # Check if custom available area raster should be used
+        use_custom_area = config.get("available_area", "standard") == "custom"
+        
+        if use_custom_area:
+            # Use custom raster file for available area
+            technology = snakemake.wildcards.technology
+            custom_raster_path = os.path.join(
+                BASE_DIR, "data", f"{technology}_available_area.tif"
             )
-            if "distance" in copernicus and config["copernicus"]["distance"] > 0:
+            
+            if os.path.exists(custom_raster_path):
+                # Read the CRS from the custom raster file
+                with rasterio.open(custom_raster_path) as src:
+                    custom_raster_crs = CRS.from_wkt(src.crs.to_wkt())
+                
+                logger.info(
+                    f"Using custom available area raster for {technology}: {custom_raster_path}"
+                )
+                logger.info(f"Custom raster CRS: {custom_raster_crs}")
+                
+                # Add the custom raster directly - areas with value 1 are available, 0 are excluded
+                excluder.add_raster(
+                    custom_raster_path, codes=[1], invert=True, crs=custom_raster_crs, allow_no_overlap=True
+                )
+            else:
+                logger.warning(
+                    f"Custom available area raster not found at {custom_raster_path}. "
+                    f"Falling back to standard exclusion method."
+                )
+                use_custom_area = False
+        
+        # Use standard exclusion method if custom is not enabled or file not found
+        if not use_custom_area:
+            if "natura" in config and config["natura"]:
+                excluder.add_raster(paths.natura, nodata=0, allow_no_overlap=True)
+
+            if "copernicus" in config and config["copernicus"]:
+                copernicus = config["copernicus"]
                 excluder.add_raster(
                     paths.copernicus,
-                    codes=copernicus["distance_grid_codes"],
-                    buffer=copernicus["distance"],
+                    codes=copernicus["grid_codes"],
+                    invert=True,
                     crs=COPERNICUS_CRS,
                 )
+                if "distance" in copernicus and config["copernicus"]["distance"] > 0:
+                    excluder.add_raster(
+                        paths.copernicus,
+                        codes=copernicus["distance_grid_codes"],
+                        buffer=copernicus["distance"],
+                        crs=COPERNICUS_CRS,
+                    )
 
-        if "max_depth" in config:
-            # lambda not supported for atlite + multiprocessing
-            # use named function np.greater with partially frozen argument instead
-            # and exclude areas where: -max_depth > grid cell depth
-            func_depth = functools.partial(np.greater, -config["max_depth"])
-            excluder.add_raster(
-                paths.gebco, codes=func_depth, crs=GEBCO_CRS, nodata=-1000
-            )
+            if "max_depth" in config:
+                # lambda not supported for atlite + multiprocessing
+                # use named function np.greater with partially frozen argument instead
+                # and exclude areas where: -max_depth > grid cell depth
+                func_depth = functools.partial(np.greater, -config["max_depth"])
+                excluder.add_raster(
+                    paths.gebco, codes=func_depth, crs=GEBCO_CRS, nodata=-1000
+                )
 
-        if "min_shore_distance" in config:
-            buffer = config["min_shore_distance"]
-            excluder.add_geometry(paths.country_shapes, buffer=buffer)
+            if "min_shore_distance" in config:
+                buffer = config["min_shore_distance"]
+                excluder.add_geometry(paths.country_shapes, buffer=buffer)
 
-        if "max_shore_distance" in config:
-            buffer = config["max_shore_distance"]
-            excluder.add_geometry(paths.country_shapes, buffer=buffer, invert=True)
+            if "max_shore_distance" in config:
+                buffer = config["max_shore_distance"]
+                excluder.add_geometry(paths.country_shapes, buffer=buffer, invert=True)
 
         kwargs = dict(nprocesses=nprocesses, disable_progressbar=noprogress)
         if noprogress:

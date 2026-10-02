@@ -268,8 +268,21 @@ atlite:
       # y: [33., 72]    # manual set cutout range
 
 renewable:
+  # Custom Available Area Raster Files:
+  # For each renewable technology, you can provide a custom raster file that defines the available area.
+  # - File format: GeoTIFF (.tif)
+  # - File location: data/{technology}_available_area.tif
+  # - File naming convention:
+  #   * solar: data/solar_available_area.tif
+  #   * onwind: data/onwind_available_area.tif
+  #   * offwind-ac: data/offwind-ac_available_area.tif
+  #   * offwind-dc: data/offwind-dc_available_area.tif
+  # - Raster values: Use 1 for available areas, 0 for excluded areas
+  # - To use custom raster: Set 'available_area: custom' for the respective technology
+  # - If custom file is not found, the script will fall back to the standard exclusion method
   onwind:
     cutout: cutout-2013-era5
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/onwind_available_area.tif)
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -297,6 +310,7 @@ renewable:
     extendable: true
   offwind-ac:
     cutout: cutout-2013-era5
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/offwind-ac_available_area.tif)
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -315,6 +329,7 @@ renewable:
     extendable: true
   offwind-dc:
     cutout: cutout-2013-era5
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/offwind-dc_available_area.tif)
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -334,6 +349,7 @@ renewable:
     extendable: true
   solar:
     cutout: cutout-2013-era5
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/solar_available_area.tif)
     resource:
       method: pv
       panel: CSi
