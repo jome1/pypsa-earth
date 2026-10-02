@@ -334,6 +334,7 @@ renewable:
   # - If custom file is not found, the script will fall back to the standard exclusion method
   onwind:
     cutout: auto
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/onwind_available_area.tif)
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -361,6 +362,7 @@ renewable:
     extendable: true
   offwind-ac:
     cutout: auto
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/offwind-ac_available_area.tif)
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -379,6 +381,7 @@ renewable:
     extendable: true
   offwind-dc:
     cutout: auto
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/offwind-dc_available_area.tif)
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -398,6 +401,7 @@ renewable:
     extendable: true
   solar:
     cutout: auto
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/solar_available_area.tif)
     resource:
       method: pv
       panel: CSi
@@ -441,6 +445,7 @@ renewable:
     hydro_min_inflow_pu: 1.0 # [hour] A threshold of energy to power ratio to classify hydro powerplants as reservoirs in case type is missed
   csp:
     cutout: auto
+    available_area: standard # Options: 'standard' (use exclusion calculation) or 'custom' (use data/csp_available_area.tif)
     resource:
       method: csp
       installation: SAM_solar_tower
